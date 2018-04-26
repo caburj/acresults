@@ -2,6 +2,7 @@ import numpy as np
 import pandas as pd
 import os
 from datetime import date
+from functools import reduce
 
 from .constants import *
 
