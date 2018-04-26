@@ -1,6 +1,7 @@
 import numpy as np
 import pandas as pd
 import os
+from datetime import date
 
 from .constants import *
 
@@ -17,12 +18,9 @@ def to_dataframe(lines):
     columns = lines[0].strip().split()
     values = lmap(lambda line: lmap(float, line.strip().split()), lines[2:])
     units = ["-"] * 5 + lines[1].strip().split()
-    
-    try:
-        res = pd.DataFrame(values, columns=columns)
-    except AssertionError:
-        return None
-    
+    res = pd.DataFrame(values, columns=columns)
+    date_index = [date(*map(int, (y, m, d))) for y, m, d in zip(res.Year, res.Month, res.Day)]
+    res.index = date_index
     res.units = units
     return res
 
@@ -48,8 +46,6 @@ def load(fname):
     with open(fname) as f:
         lines = f.readlines()
         index_of_Legend = lines.index("Legend\n")
-        lines_ = lines[3:index_of_Legend]
-        asterisk_locs = [i for (i, truth) in enumerate(map(lambda line: starts_with("**", line), lines_)) if truth]
-        groups = {int(lines_[i][15:19]):lines_[i+1:j-1] for i, j in zip(asterisk_locs, asterisk_locs[1:] + [index_of_Legend])}
-
-    return {i: to_dataframe(groups[i]) for i in groups}
+        asterisk_locs = [i for (i, truth) in enumerate(map(lambda line: starts_with("**", line), lines)) if truth]
+        groups = {int(lines[i][15:19]):lines[i+1:j-1] for i, j in zip(asterisk_locs, asterisk_locs[1:] + [index_of_Legend])}
+        return {i: to_dataframe(groups[i]) for i in groups}

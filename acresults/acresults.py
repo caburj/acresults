@@ -21,7 +21,36 @@ class ACResults:
         self.salt = None
         self.wabal = None
 
-    def get_Clim(self, run_number=None):
+    def get(self, name, run_number=None):
+        if name == "Clim":
+            return self._get_Clim(run_number)
+
+        if name == "CompEC":
+            return self._get_CompEC(run_number)
+
+        if name == "CompWC":
+            return self._get_CompWC(run_number)
+
+        if name == "Crop":
+            return self._get_Crop(run_number)
+
+        if name == "Inet":
+            return self._get_Inet(run_number)
+
+        if name == "Prof":
+            return self._get_Prof(run_number)
+
+        if name == "Salt":
+            return self._get_Salt(run_number)
+
+        if name == "Wabal":
+            return self._get_Wabal(run_number)
+
+        if name == "Run":
+            return self._get_Run()
+           
+
+    def _get_Clim(self, run_number=None):
         if self.clim is None:
             self.clim = load(self.fnames['Clim'])
         
@@ -30,9 +59,9 @@ class ACResults:
 
         return self.clim[run_number]
 
-    def get_CompEC(self, run_number=None):
+    def _get_CompEC(self, run_number=None):
         raise NotImplementedError()
-        
+
         if self.compec is None:
             self.compec = load(self.fnames['CompEC'])
 
@@ -41,7 +70,7 @@ class ACResults:
 
         return self.compec[run_number]
 
-    def get_CompWC(self, run_number=None):
+    def _get_CompWC(self, run_number=None):
         raise NotImplementedError()
 
         if self.compwc is None:
@@ -52,7 +81,7 @@ class ACResults:
 
         return self.compwc[run_number]
 
-    def get_Crop(self, run_number=None):
+    def _get_Crop(self, run_number=None):
         if self.crop is None:
             self.crop = load(self.fnames['Crop'])
 
@@ -61,7 +90,7 @@ class ACResults:
 
         return self.crop[run_number]
     
-    def get_Inet(self, run_number=None):
+    def _get_Inet(self, run_number=None):
         if self.inet is None:
             self.inet = load(self.fnames['Inet'])
 
@@ -70,7 +99,7 @@ class ACResults:
 
         return self.inet[run_number]
 
-    def get_Prof(self, run_number=None):
+    def _get_Prof(self, run_number=None):
         if self.prof is None:
             self.prof = load(self.fnames['Prof'])
 
@@ -79,7 +108,7 @@ class ACResults:
 
         return self.prof[run_number]
 
-    def get_Salt(self, run_number=None):
+    def _get_Salt(self, run_number=None):
         if self.salt is None:
             self.salt = load(self.fnames['Salt'])
 
@@ -88,7 +117,7 @@ class ACResults:
 
         return self.salt[run_number]
 
-    def get_Wabal(self, run_number=None):
+    def _get_Wabal(self, run_number=None):
         if self.wabal is None:
             self.wabal = load(self.fnames['Wabal'])
 
@@ -97,7 +126,7 @@ class ACResults:
 
         return self.wabal[run_number]
 
-    def get_Run(self):
+    def _get_Run(self):
         if self.run is None:
             self.run = load_Run(self.fnames['Run'])
         return self.run
