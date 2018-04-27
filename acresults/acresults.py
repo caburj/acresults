@@ -7,6 +7,16 @@ from functools import reduce
 from . import helper
 from . import groupers
 
+from .helper import lmap, lfilter
+
+__all__ = [
+    "ACResults", 
+    "FrequencyAnalysis",
+    "NIR_chart_decade",
+    "NIR_chart_month",
+    "NIR_fa",
+    "boxplot"
+]
 
 class ACResults:
     """The class abstracting all the results of an AquaCrop simulation.
@@ -351,3 +361,21 @@ def month_range(start="11", end="05"):
         lst.append(f"{i if i <= 12 else i % 12:02}")
 
     return lst
+
+def boxplot(results, variable):
+    """Makes boxplots of the variable of the given results.
+    """
+    first_res = results[0].get("Run")
+    column_names = list(first_res.columns)
+    name_index = helper.lmap(lambda name: name.lower(), column_names).index(variable.lower())
+
+    variable_ = column_names[name_index]
+    unit = first_res.units[name_index]
+
+    values = helper.lmap(lambda res: res.get("Run")[variable_], results)
+    names = helper.lmap(lambda res: res.get_project_name(), results)
+    
+    plt.boxplot(values, notch=True)
+    plt.xticks(range(1, len(results)+1), names)
+    plt.ylabel(f"{variable_} ({unit})")
+    plt.xlabel("Project Names")
