@@ -1,3 +1,7 @@
-from .acresults import ACResults
-from .functions import *
+from .acresults import *
 from .groupers import *
+
+__doc__ = (
+""""""
+)
+

@@ -4,7 +4,7 @@ import os
 from datetime import date
 from functools import reduce
 
-from .constants import *
+from . import constants
 
 def lmap(f, lst): 
     return list(map(f, lst))
@@ -27,7 +27,7 @@ def to_dataframe(lines):
 
 def get_result_fnames(project_name, aquacrop_dir):
     results_dir = os.path.join(aquacrop_dir, "OUTP")
-    names_with_OUT = {name:(lambda name: f"{project_name}{name}.OUT")(name) for name in RESULTS_EXTENSIONS}
+    names_with_OUT = {name:(lambda name: f"{project_name}{name}.OUT")(name) for name in constants.RESULTS_EXTENSIONS}
     return {name:(lambda name: os.path.join(results_dir, name))(names_with_OUT[name]) for name in names_with_OUT}
 
 def load_Run(fname):
@@ -50,3 +50,20 @@ def load(fname):
         asterisk_locs = [i for (i, truth) in enumerate(map(lambda line: starts_with("**", line), lines)) if truth]
         groups = {int(lines[i][15:19]):lines[i+1:j-1] for i, j in zip(asterisk_locs, asterisk_locs[1:] + [index_of_Legend])}
         return {i: to_dataframe(groups[i]) for i in groups}
+
+def weibull(arr):
+    """returns the corresponding probability using _weibull formula."""
+    n = arr.size
+    return np.array([((r + 1) / (n + 1), v) for r, v in enumerate(arr)]).T
+
+def rev_sort(arr):
+    return np.flipud(np.sort(arr))
+
+def non_zero(arr):
+    return np.array(list(filter(lambda x: not np.isclose(x, 0), arr)))
+
+def p_zero(arr):
+    return len(list(filter(lambda x: np.isclose(x, 0), arr))) / arr.size
+
+def p_local(p_z, p_actual):
+    return (p_actual - p_z) / (1 - p_z)
