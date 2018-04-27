@@ -6,8 +6,10 @@ def _which_decade(date):
     else:
         return 3
 
+
 def decade_grouper(date):
     return f"{date.year}-{date.month:02}-D{_which_decade(date)}"
+
 
 def month_grouper(date):
     return f"{date.year}-{date.month:02}"
