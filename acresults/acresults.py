@@ -10,7 +10,7 @@ from . import groupers
 from .helper import lmap, lfilter
 
 __all__ = [
-    "ACResults", 
+    "ACResult", 
     "FrequencyAnalysis",
     "NIR_chart_decade",
     "NIR_chart_month",
@@ -18,7 +18,7 @@ __all__ = [
     "boxplot"
 ]
 
-class ACResults:
+class ACResult:
     """The class abstracting all the results of an AquaCrop simulation.
 
     Method:
@@ -40,7 +40,7 @@ class ACResults:
         self.salt = None
         self.wabal = None
 
-    def get(self, name, run_number=None):
+    def get(self, name):
         """Extracts the results file with given name and returns as dict of
         pd.DataFrame or pd.DataFrame.
 
@@ -59,28 +59,28 @@ class ACResults:
 
         """
         if name == "Clim":
-            return self.get_Clim(run_number)
+            return self.get_Clim()
 
         elif name == "CompEC":
-            return self.get_CompEC(run_number)
+            return self.get_CompEC()
 
         elif name == "CompWC":
-            return self.get_CompWC(run_number)
+            return self.get_CompWC()
 
         elif name == "Crop":
-            return self.get_Crop(run_number)
+            return self.get_Crop()
 
         elif name == "Inet":
-            return self.get_Inet(run_number)
+            return self.get_Inet()
 
         elif name == "Prof":
-            return self.get_Prof(run_number)
+            return self.get_Prof()
 
         elif name == "Salt":
-            return self.get_Salt(run_number)
+            return self.get_Salt()
 
         elif name == "Wabal":
-            return self.get_Wabal(run_number)
+            return self.get_Wabal()
 
         elif name == "Run":
             return self.get_Run()
@@ -91,81 +91,71 @@ class ACResults:
     def get_project_name(self):
         return self.project_name
 
-    def get_Clim(self, run_number=None):
+    def get_variable(self, variable):
+        if helper.is_in(self.get("Clim"), variable):
+            return helper.extract(self.get("Clim"), variable)
+
+        elif helper.is_in(self.get("Crop"), variable):
+            return helper.extract(self.get("Crop"), variable)
+        
+        elif helper.is_in(self.get("Inet"), variable):
+            return helper.extract(self.get("Inet"), variable)
+
+        elif helper.is_in(self.get("Prof"), variable):
+            return helper.extract(self.get("Prof"), variable)
+
+        elif helper.is_in(self.get("Salt"), variable):
+            return helper.extract(self.get("Salt"), variable)
+
+        elif helper.is_in(self.get("Wabal"), variable):
+            return helper.extract(self.get("Wabal"), variable)
+        
+        else:
+            raise Exception(f"variable = {variable}: Unable to find that variable.")
+
+    def get_Clim(self):
         if self.clim is None:
             self.clim = helper.load(self.fnames['Clim'])
+        return self.clim
 
-        if run_number is None:
-            return self.clim
-
-        return self.clim[run_number]
-
-    def get_CompEC(self, run_number=None):
+    def get_CompEC(self):
         raise NotImplementedError()
 
         if self.compec is None:
             self.compec = helper.load(self.fnames['CompEC'])
+        return self.compec
 
-        if run_number is None:
-            return self.compec
-
-        return self.compec[run_number]
-
-    def get_CompWC(self, run_number=None):
+    def get_CompWC(self):
         raise NotImplementedError()
 
         if self.compwc is None:
             self.compwc = helper.load(self.fnames['CompWC'])
+        return self.compwc
 
-        if run_number is None:
-            return self.compwc
-
-        return self.compwc[run_number]
-
-    def get_Crop(self, run_number=None):
+    def get_Crop(self):
         if self.crop is None:
             self.crop = helper.load(self.fnames['Crop'])
+        return self.crop
 
-        if run_number is None:
-            return self.crop
-
-        return self.crop[run_number]
-
-    def get_Inet(self, run_number=None):
+    def get_Inet(self):
         if self.inet is None:
             self.inet = helper.load(self.fnames['Inet'])
+        return self.inet
 
-        if run_number is None:
-            return self.inet
-
-        return self.inet[run_number]
-
-    def get_Prof(self, run_number=None):
+    def get_Prof(self):
         if self.prof is None:
             self.prof = helper.load(self.fnames['Prof'])
+        return self.prof
 
-        if run_number is None:
-            return self.prof
-
-        return self.prof[run_number]
-
-    def get_Salt(self, run_number=None):
+    def get_Salt(self):
         if self.salt is None:
             self.salt = helper.load(self.fnames['Salt'])
+        return self.salt
 
-        if run_number is None:
-            return self.salt
-
-        return self.salt[run_number]
-
-    def get_Wabal(self, run_number=None):
+    def get_Wabal(self):
         if self.wabal is None:
             self.wabal = helper.load(self.fnames['Wabal'])
-
-        if run_number is None:
-            return self.wabal
-
-        return self.wabal[run_number]
+        return self.wabal
 
     def get_Run(self):
         if self.run is None:
@@ -364,6 +354,12 @@ def month_range(start="11", end="05"):
 
 def boxplot(results, variable):
     """Makes boxplots of the variable of the given results.
+
+    Only process the data from the `Run` result.
+
+    Arguments:
+        results (List[ACResults]) : list of ACResults object
+        variable (string) : a variable in the Run result.
     """
     first_res = results[0].get("Run")
     column_names = list(first_res.columns)
@@ -379,3 +375,15 @@ def boxplot(results, variable):
     plt.xticks(range(1, len(results)+1), names)
     plt.ylabel(f"{variable_} ({unit})")
     plt.xlabel("Project Names")
+
+def tsplot(result, variable, with_ci=True):
+    """Time series plot of a variable from a ACResult object.
+
+    Takes the mean of all the runs.
+
+    Arguments:
+        result (ACResult) : data
+        variable (string) : variable to plot
+        with_ci (bool) : with confidence interval?
+    """
+    

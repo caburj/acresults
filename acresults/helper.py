@@ -84,3 +84,16 @@ def p_zero(arr):
 
 def p_local(p_z, p_actual):
     return (p_actual - p_z) / (1 - p_z)
+
+def to_lower(s):
+    return s.lower()
+
+def is_in(res, var):
+    names = list(res[1].columns)
+    return to_lower(var.strip()) in lmap(to_lower, names)
+
+def extract(res, var):
+    names = list(res[1].columns)
+    index = lmap(to_lower, names).index(to_lower(var))
+    var_ = names[index]
+    return {key: res[key][["DAP", var_]] for key in res}
