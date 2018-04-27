@@ -15,7 +15,8 @@ __all__ = [
     "NIR_chart_decade",
     "NIR_chart_month",
     "NIR_fa",
-    "boxplot"
+    "boxplot",
+    "tsplot"
 ]
 
 class ACResult:
@@ -376,14 +377,26 @@ def boxplot(results, variable):
     plt.ylabel(f"{variable_} ({unit})")
     plt.xlabel("Project Names")
 
-def tsplot(result, variable, with_ci=True):
+def tsplot(result, variable, with_ci=True, ci_percentage=0.9):
     """Time series plot of a variable from a ACResult object.
 
     Takes the mean of all the runs.
+
+    For simplicity, last element is not included in the calculation.
 
     Arguments:
         result (ACResult) : data
         variable (string) : variable to plot
         with_ci (bool) : with confidence interval?
     """
-    
+    values = result.get_variable(variable)
+    values_ = pd.concat([values[k][:-1] for k in values], axis=1)
+    mean = values_.mean(axis=1).values
+    std = values_.std(axis=1).values
+    z = norm.ppf(ci_percentage + (1 - ci_percentage) / 2)
+    upper = mean + z * std
+    lower = mean - z * std
+    plt.plot(np.arange(1, std.size + 1), mean)
+    plt.fill_between(np.arange(1, std.size+1), lower, upper, alpha=0.3)
+    plt.xlabel("DAP")
+

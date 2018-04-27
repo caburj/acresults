@@ -88,12 +88,12 @@ def p_local(p_z, p_actual):
 def to_lower(s):
     return s.lower()
 
-def is_in(res, var):
-    names = list(res[1].columns)
+def is_in(dct, var):
+    names = list(dct[1].columns)
     return to_lower(var.strip()) in lmap(to_lower, names)
 
-def extract(res, var):
-    names = list(res[1].columns)
+def extract(dct, var):
+    names = list(dct[1].columns)
     index = lmap(to_lower, names).index(to_lower(var))
     var_ = names[index]
-    return {key: res[key][["DAP", var_]] for key in res}
+    return {key: dct[key][[var_]].reset_index()[var_] for key in dct}
