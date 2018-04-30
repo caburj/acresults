@@ -26,6 +26,8 @@ class ACResult:
         get(name) : returns the results corresponding to the given result name.
             or use get_`name`.
         get_project_name() : returns the project name.
+        get_variable(variable) : finds `variable` from all the components of
+            ACResult object and returns a SingleResult namedtuple.
     """
 
     def __init__(self, project_name, aquacrop_dir):
@@ -37,9 +39,17 @@ class ACResult:
         self.crop = None
         self.inet = None
         self.prof = None
-        self.run = None
+        self.summary = None
         self.salt = None
         self.wabal = None
+
+    def get_summary(self):
+        if self.summary is None:
+            self.summary = helper.load_summary(self.fnames['Run'])
+        return self.summary
+
+    def get_project_name(self):
+        return self.project_name
 
     def get(self, name):
         """Extracts the results file with given name and returns as dict of
@@ -89,16 +99,13 @@ class ACResult:
         else:
             raise Exception(f"name: `{name}` is not recognized.")
 
-    def get_project_name(self):
-        return self.project_name
-
     def get_variable(self, variable):
         if helper.is_in(self.get("Clim"), variable):
             return helper.extract(self.get("Clim"), variable)
 
         elif helper.is_in(self.get("Crop"), variable):
             return helper.extract(self.get("Crop"), variable)
-        
+
         elif helper.is_in(self.get("Inet"), variable):
             return helper.extract(self.get("Inet"), variable)
 
@@ -110,58 +117,59 @@ class ACResult:
 
         elif helper.is_in(self.get("Wabal"), variable):
             return helper.extract(self.get("Wabal"), variable)
-        
+
         else:
-            raise Exception(f"variable = {variable}: Unable to find that variable.")
+            raise Exception(
+                f"variable = {variable}: Unable to find that variable.")
 
     def get_Clim(self):
         if self.clim is None:
-            self.clim = helper.load(self.fnames['Clim'])
+            self.clim = helper.load_result(self.fnames['Clim'])
         return self.clim
 
     def get_CompEC(self):
         raise NotImplementedError()
 
         if self.compec is None:
-            self.compec = helper.load(self.fnames['CompEC'])
+            self.compec = helper.load_result(self.fnames['CompEC'])
         return self.compec
 
     def get_CompWC(self):
         raise NotImplementedError()
 
         if self.compwc is None:
-            self.compwc = helper.load(self.fnames['CompWC'])
+            self.compwc = helper.load_result(self.fnames['CompWC'])
         return self.compwc
 
     def get_Crop(self):
         if self.crop is None:
-            self.crop = helper.load(self.fnames['Crop'])
+            self.crop = helper.load_result(self.fnames['Crop'])
         return self.crop
 
     def get_Inet(self):
         if self.inet is None:
-            self.inet = helper.load(self.fnames['Inet'])
+            self.inet = helper.load_result(self.fnames['Inet'])
         return self.inet
 
     def get_Prof(self):
         if self.prof is None:
-            self.prof = helper.load(self.fnames['Prof'])
+            self.prof = helper.load_result(self.fnames['Prof'])
         return self.prof
 
     def get_Salt(self):
         if self.salt is None:
-            self.salt = helper.load(self.fnames['Salt'])
+            self.salt = helper.load_result(self.fnames['Salt'])
         return self.salt
 
     def get_Wabal(self):
         if self.wabal is None:
-            self.wabal = helper.load(self.fnames['Wabal'])
+            self.wabal = helper.load_result(self.fnames['Wabal'])
         return self.wabal
 
     def get_Run(self):
-        if self.run is None:
-            self.run = helper.load_Run(self.fnames['Run'])
-        return self.run
+        if self.summary is None:
+            self.summary = helper.load_summary(self.fnames['Run'])
+        return self.summary
 
 
 class FrequencyAnalysis:
@@ -227,19 +235,20 @@ def aggregate(df, grouper, using=np.sum):
     return df.groupby(grouper).aggregate(using)
 
 
-def NIR_fa(Inet_result, by="decade"):
+def NIR_fa(acresult, by="decade"):
     """Frequency analysis of the Net Irrigation Requirements.
 
     Arguments:
         Inet_result : from ACResult().get("Inet")
         by (string) : "decade" or "month" only
     """
-    inet_keys = Inet_result.keys()
+    runs = acresult.get_variable('inet')
     grouper = groupers.decade_grouper if by == "decade" else groupers.month_grouper
 
-    def combine(acc, x): return pd.concat([acc, x])
-    aggregated_inet = helper.lmap(lambda k: aggregate(
-        Inet_result[k].Inet, grouper, np.sum), inet_keys)
+    def combine(acc, x): 
+        return pd.concat([acc, x])
+
+    aggregated_inet = helper.lmap(lambda k: aggregate(runs[k], grouper, np.sum), runs.keys())
     all_data = reduce(combine, aggregated_inet)
     times = list(set(helper.lmap(lambda v: v[4:], all_data.index.values)))
     regex_times = helper.lmap(lambda s: f"{s}$", times)
@@ -247,22 +256,22 @@ def NIR_fa(Inet_result, by="decade"):
     return {re_time[1:-1]: FrequencyAnalysis(all_data.filter(regex=re_time).values) for re_time in regex_times}
 
 
-def NIR_fa_decade(Inet_result):
-    return NIR_fa(Inet_result, by="decade")
+def NIR_fa_decade(acresult):
+    return NIR_fa(acresult, by="decade")
 
 
-def NIR_fa_month(Inet_result):
-    return NIR_fa(Inet_result, by="month")
+def NIR_fa_month(acresult):
+    return NIR_fa(acresult, by="month")
 
 
-def NIR_chart_decade(Inet_result, start, end):
+def NIR_chart_decade(acresult, start, end):
     """Net irrigation requirement chart.
     
     Based on probability of 0.8, 0.5 and 0.2 for wet, normal and dry conditions,
     respectively.
 
     Arguments:
-        Inet_result : from ACResult().get_Inet()
+        acresult : from ACResult()
         start (string) : start date with format->f"{month:02}-D{decade}" 
             e.g. "11-D1"
         end (string) : end date (inclusive) with format->f"{month:02}-D{decade}" 
@@ -271,7 +280,7 @@ def NIR_chart_decade(Inet_result, start, end):
     Returns:
         pd.DataFrame
     """
-    nir_fa = NIR_fa_decade(Inet_result)
+    nir_fa = NIR_fa_decade(acresult)
     time_index = decade_range(start, end)
     wet_values = list(map(lambda x: nir_fa[x].get_value(0.8), time_index))
     normal_values = list(map(lambda x: nir_fa[x].get_value(0.5), time_index))
@@ -279,21 +288,21 @@ def NIR_chart_decade(Inet_result, start, end):
     return pd.DataFrame([dry_values, normal_values, wet_values], index=["Dry", "Normal", "Wet"], columns=time_index)
 
 
-def NIR_chart_month(Inet_result, start, end):
+def NIR_chart_month(acresult, start, end):
     """Net irrigation requirement chart.
     
     Based on probability of 0.8, 0.5 and 0.2 for wet, normal and dry conditions,
     respectively.
 
     Arguments:
-        Inet_result : from ACResult().get_Inet()
+        acresult : from ACResult()
         start (string) : start date with format->f"{month:02}" e.g. "11"
         end (string) : end date (inclusive) with format->f"{month:02}" e.g. "05"
 
     Returns:
         pd.DataFrame
     """
-    nir_fa = NIR_fa_month(Inet_result)
+    nir_fa = NIR_fa_month(acresult)
     time_index = month_range(start, end)
     wet_values = list(map(lambda x: nir_fa[x].get_value(0.8), time_index))
     normal_values = list(map(lambda x: nir_fa[x].get_value(0.5), time_index))
@@ -353,31 +362,32 @@ def month_range(start="11", end="05"):
 
     return lst
 
-def boxplot(results, variable):
-    """Makes boxplots of the variable of the given results.
+def boxplot(acresults, variable):
+    """Makes boxplots of the variable of the given acresults.
 
     Only process the data from the `Run` result.
 
     Arguments:
-        results (List[ACResults]) : list of ACResults object
+        acresults (List[ACResult]) : list of ACResult object
         variable (string) : a variable in the Run result.
     """
-    first_res = results[0].get("Run")
-    column_names = list(first_res.columns)
-    name_index = helper.lmap(lambda name: name.lower(), column_names).index(variable.lower())
+    first_res = acresults[0].get_summary()
+    names = first_res.get_names()
+    units = first_res.get_units()
 
-    variable_ = column_names[name_index]
-    unit = first_res.units[name_index]
+    index = helper.find(variable, names)
+    name = names[index]
+    unit = units[name] 
 
-    values = helper.lmap(lambda res: res.get("Run")[variable_], results)
-    names = helper.lmap(lambda res: res.get_project_name(), results)
+    values = helper.lmap(lambda res: res.get_summary().get_column(name), acresults)
+    names = helper.lmap(lambda res: res.get_project_name(), acresults)
     
     plt.boxplot(values, notch=True)
-    plt.xticks(range(1, len(results)+1), names)
-    plt.ylabel(f"{variable_} ({unit})")
+    plt.xticks(range(1, len(acresults)+1), names)
+    plt.ylabel(f"{name} ({unit})")
     plt.xlabel("Project Names")
 
-def tsplot(result, variable, with_ci=True, ci_percentage=0.9):
+def tsplot(acresult, variable, with_ci=True, ci_percentage=0.9):
     """Time series plot of a variable from a ACResult object.
 
     Takes the mean of all the runs.
@@ -385,18 +395,22 @@ def tsplot(result, variable, with_ci=True, ci_percentage=0.9):
     For simplicity, last element is not included in the calculation.
 
     Arguments:
-        result (ACResult) : data
+        acresult (ACResult) : data
         variable (string) : variable to plot
         with_ci (bool) : with confidence interval?
     """
-    values = result.get_variable(variable)
-    values_ = pd.concat([values[k][:-1] for k in values], axis=1)
+    columns = acresult.get_variable(variable)
+    values_ = pd.concat([columns[k][:-1].reset_index() for k in columns], axis=1)
     mean = values_.mean(axis=1).values
     std = values_.std(axis=1).values
     z = norm.ppf(ci_percentage + (1 - ci_percentage) / 2)
     upper = mean + z * std
     lower = mean - z * std
-    plt.plot(np.arange(1, std.size + 1), mean)
+    plt.plot(np.arange(1, std.size + 1), mean, label=acresult.get_project_name())
     plt.fill_between(np.arange(1, std.size+1), lower, upper, alpha=0.3)
     plt.xlabel("DAP")
 
+    unit = columns[1].unit
+    variable_ = columns[1].name
+
+    plt.ylabel(f"{variable_} ({unit})")
