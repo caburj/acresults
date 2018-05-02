@@ -46,7 +46,18 @@ Functions
 ---------
 
 `NIR_chart_month`
+- net irrigation requirement chart by month
+- wet, normal and dry corresponds to 80%, 50%, 20% probability of exceedance respectively.
+
+`NIR_chart_decade`
+- net irrigation requirement chart by decade (10-day)
+- wet, normal and dry corresponds to 80%, 50%, 20% probability of exceedance respectively.
 
 `boxplot`
+- boxplots of a variable from list of results
 
-`tsplot`
+**`tsplot`**
+- time series plot of a variable
+- derived from the multiple runs
+- uses the average as the main plot
+- shows 

@@ -192,3 +192,12 @@ def find(name, list_names):
     """
     lower_names = lmap(to_lower, list_names)
     return lower_names.index(name.lower())
+
+def concat(results):
+    lengths = lmap(lambda res: len(res), results)
+    results_ = [
+        res.df.assign(project_name=[res.project_name] * n)
+            for res, n in zip(results, lengths)
+    ]
+    return reduce(lambda acc, a: pd.concat([acc, a], ignore_index=True), results_)
+    
