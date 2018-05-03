@@ -22,11 +22,17 @@ __all__ = [
     "NIR_fa",
     "boxplot",
     "tsplot",
-    "barplot"
+    "barplot",
+    "summarize"
 ]
 
 
-Variable = namedtuple('Variable', 'df name unit description project_name')
+Summary = namedtuple('Summary', 'df name unit')
+
+
+#############
+## CLASSES ##
+#############
 
 
 class ACOutput:
@@ -34,6 +40,9 @@ class ACOutput:
         self.fnames = helper.get_result_fnames(project_name, aquacrop_dir)
         self.project_name = project_name
         self.data = {}
+
+    def get(self, name):
+        return self[name]
 
     def get_variable(self, var):
         res = self._find_result_with(var)
@@ -49,7 +58,8 @@ class ACOutput:
         except Exception:
             description = ''
         project_name = res.project_name
-        return Variable(res[['run_number', 'date', 'DAP', real_name]], real_name, unit, description, project_name)
+        df = res[['run_number', 'date', 'DAP', real_name]]
+        return Variable(df, real_name, unit, description, project_name)
     
     def get_summary(self, var=None):
         if var is None:
@@ -68,7 +78,8 @@ class ACOutput:
         except Exception:
             description = ''
         project_name = res.project_name
-        return Variable(res[['RunNr', real_name]], real_name, unit, description, project_name)
+        df = res.df[['RunNr', real_name]]
+        return Variable(df, real_name, unit, description, project_name)
 
     def __getitem__(self, name):
         try:
@@ -161,13 +172,64 @@ class Result:
         self._len = len(self.df)
 
     def __getitem__(self, name):
-        return self.df[name]
+        return self.get_variable(name)
 
     def __len__(self):
         return self._len
     
     def __repr__(self):
         return f"Result(name='{self.name}', project_name='{self.project_name}')"
+
+    def get_variable(self, name):
+        try:
+            index = helper.find(name, self.names)
+        except Exception:
+            raise Exception(f"Unable to find variable='{name}'.")
+
+        real_name = self.names[index]
+        unit = res.units[real_name]
+
+        try:
+            description = res.descriptions[real_name]
+        except Exception:
+            description = ''
+
+        project_name = res.project_name
+        df = res[['run_number', 'date', 'DAP', real_name]]
+        return Variable(df, real_name, unit, description)
+
+    def get_run_numbers(self):
+        return list(set(self.df.run_number))
+
+    def get_run(self, number):
+        return self.df[self.df.run_number == number]
+
+
+class Variable:
+    def __init__(self, df, name, unit, description, project_name):
+        self.df = df
+        self.name = name
+        self.unit = unit
+        self.description = description
+        self.project_name = project_name
+
+    def __getitem__(self, name):
+        return self.df[name]
+
+    def __repr__(self):
+        return f"Variable(name='{self.name}', project_name='{self.project_name}')"
+
+    def values(self):
+        return self.df[self.name].values
+
+    def get_run_numbers(self):
+        return list(set(self.df.run_number))
+
+    def get_run(self, number, index='DAP'):
+        if not (index in ['DAP', 'date']):
+            index = 'DAP'
+        df = self.df[self.df.run_number == number][[index, self.name]]
+        return df.set_index(index)[self.name]
 
 
 class FrequencyAnalysis:
@@ -218,6 +280,11 @@ class FrequencyAnalysis:
             1 - (actual_y * (1 - self.p_z) + self.p_z)), "o")
         plt.xlabel(xlabel)
         plt.ylabel("Probability of Exceedance")
+
+
+######################
+## PUBLIC FUNCTIONS ##
+######################
 
 
 def aggregate(df, grouper, using=np.sum):
@@ -423,12 +490,23 @@ def boxplot(outputs, variable, **kwargs):
 
 def barplot(outputs, variable, **kwargs):
     index = helper.find(variable, outputs[0]['Run'].names)
-    variable_ = outputs[0]['Run'].names[index]
-    unit = outputs[0]['Run'].units[variable_]
+    name = outputs[0]['Run'].names[index]
+    unit = outputs[0]['Run'].units[name]
 
     results = [output['Run'] for output in outputs]
-    data = helper.concat(results)[['project_name', variable_]]
+    data = helper.concat(results)[['project_name', name]]
 
-    sns.barplot(x="project_name", y=variable_, data=data, capsize=0.1, **kwargs)
-    plt.ylabel(f"{variable_} ({unit})")
+    sns.barplot(x="project_name", y=name, data=data, capsize=0.1, **kwargs)
+    plt.ylabel(f"{name} ({unit})")
     plt.xlabel("Project Name")
+
+
+def summarize(outputs, variable):
+    summaries = lmap(lambda output: output.get_summary(variable), outputs)
+    project_names = lmap(lambda output: output.project_name, outputs)
+    means = lmap(lambda summary: np.mean(summary.values()), summaries)
+    stds = lmap(lambda summary: np.std(summary.values()), summaries)
+    df = pd.DataFrame([means, stds], index=['Mean', 'Std'], columns=project_names)
+    name = summaries[0].name
+    unit = summaries[0].unit
+    return Summary(df, name, unit)
