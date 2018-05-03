@@ -61,3 +61,11 @@ Functions
 - derived from the multiple runs
 - uses the average as the main plot
 - shows 
+
+
+TODO
+----
+
+- public functions can be categorized into two
+    - comparing projects
+    - results within a project
